@@ -1,4 +1,4 @@
-package application
+package expense
 
 import (
 	"github.com/Lexv0lk/expense-tracker-tui/internal/domain"

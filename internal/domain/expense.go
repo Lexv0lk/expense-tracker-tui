@@ -4,7 +4,7 @@ import "time"
 
 type Expense struct {
 	Id          int
-	CreatedAt   time.Time
+	SpentAt     time.Time
 	Description string
 	Amount      float64
 }
