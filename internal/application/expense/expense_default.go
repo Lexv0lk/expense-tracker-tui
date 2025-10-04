@@ -13,6 +13,14 @@ func DeleteExpense(id int) error {
 	return deleteExpense(defaultExpenseStorage, id)
 }
 
+func UpdateExpense(id int, description string, amount float64, spentAt time.Time) (domain.Expense, error) {
+	return updateExpense(defaultExpenseStorage, id, description, amount, spentAt)
+}
+
+func GetExpense(id int) (domain.Expense, error) {
+	return getExpense(defaultExpenseStorage, id)
+}
+
 func GetAllExpenses() ([]domain.Expense, error) {
 	return defaultExpenseStorage.Load()
 }

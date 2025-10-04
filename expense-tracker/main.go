@@ -12,7 +12,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error initializing new menu: %v", err)
 	} else {
-		p := tea.NewProgram(m)
+		p := tea.NewProgram(m, tea.WithAltScreen())
 
 		if _, err := p.Run(); err != nil {
 			log.Fatalf("Error running program: %v", err)

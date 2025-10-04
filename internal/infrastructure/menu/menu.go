@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"github.com/Lexv0lk/expense-tracker-tui/internal/application/expense"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -9,23 +10,18 @@ type state int
 const (
 	tableState state = iota
 	addState
+	msgState
 )
 
 type MainModel struct {
 	currentState state
 	table        tableModel
-	addInput     addModel
+	addInput     changeFormModel
+	msgView      msgModel
 }
 
 func InitialModel() (tea.Model, error) {
 	table, err := getNewTableModel()
-
-	if err != nil {
-		return nil, err
-	}
-
-	addInput, err := getAdditionModel()
-
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +29,6 @@ func InitialModel() (tea.Model, error) {
 	return MainModel{
 		currentState: tableState,
 		table:        table.(tableModel),
-		addInput:     addInput.(addModel),
 	}, nil
 }
 
@@ -42,19 +37,44 @@ func (m MainModel) Init() tea.Cmd { return nil }
 func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	switch msg.(type) {
+	switch msg := msg.(type) {
 	case backMsg:
 		m.currentState = tableState
 	case addMsg:
-		newAddInput, _ := getAdditionModel()
-		cAddInput, ok := newAddInput.(addModel)
+		newAddInput, _ := getAddingModel()
+		cAddInput, ok := newAddInput.(changeFormModel)
 
 		if !ok {
-			panic("Failed assertion to addModel")
+			panic("Failed assertion to changeFormModel")
 		}
 
 		m.addInput = cAddInput
 		m.currentState = addState
+	case editMsg:
+		exp, err := expense.GetExpense(msg.id)
+		if err != nil {
+			return m, errorCmd(err, backToTableCmd())
+		}
+
+		newEditInput, _ := getChangeModel(exp)
+		cEditInput, ok := newEditInput.(changeFormModel)
+
+		if !ok {
+			panic("Failed assertion to changeFormModel")
+		}
+
+		m.addInput = cEditInput
+		m.currentState = addState
+	case errorMsg:
+		newMsgModel := getNewMsgModel(msg.error.Error(), msg.sourceBack)
+		cMsgModel, ok := newMsgModel.(msgModel)
+
+		if !ok {
+			panic("Failed assertion to msgModel")
+		}
+
+		m.msgView = cMsgModel
+		m.currentState = msgState
 	}
 
 	switch m.currentState {
@@ -70,13 +90,23 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = newCmd
 	case addState:
 		newAdd, newCmd := m.addInput.Update(msg)
-		addModel, ok := newAdd.(addModel)
+		addModel, ok := newAdd.(changeFormModel)
 
 		if !ok {
-			panic("Failed assertion to addModel")
+			panic("Failed assertion to changeFormModel")
 		}
 
 		m.addInput = addModel
+		cmd = newCmd
+	case msgState:
+		newMsg, newCmd := m.msgView.Update(msg)
+		msgModel, ok := newMsg.(msgModel)
+
+		if !ok {
+			panic("Failed assertion to msgModel")
+		}
+
+		m.msgView = msgModel
 		cmd = newCmd
 	}
 
@@ -89,6 +119,8 @@ func (m MainModel) View() string {
 		return m.table.View()
 	case addState:
 		return m.addInput.View()
+	case msgState:
+		return m.msgView.View()
 	default:
 		panic("Unknown menu state")
 	}

@@ -61,7 +61,7 @@ func getNewTableModel() (tea.Model, error) {
 	return tableModel{
 		table:         t,
 		help:          help.New(),
-		actionsKeyMap: getDefaultKeymap(),
+		actionsKeyMap: getActionKeymap(),
 	}, nil
 }
 
@@ -76,21 +76,47 @@ func (m tableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, constants.Keymap.Delete):
 			if len(m.table.Rows()) > 0 {
-				//TODO: add error handling and confirmation
 				selectedRow := m.table.SelectedRow()
-				id, _ := strconv.Atoi(selectedRow[0])
-				_ = expense.DeleteExpense(id)
-				rows, _ := getExpensesRows()
+
+				id, err := strconv.Atoi(selectedRow[0])
+				if err != nil {
+					return m, errorCmd(err, backToTableCmd())
+				}
+
+				err = expense.DeleteExpense(id)
+				if err != nil {
+					return m, errorCmd(err, backToTableCmd())
+				}
+
+				rows, err := getExpensesRows()
+				if err != nil {
+					return m, errorCmd(err, backToTableCmd())
+				}
+
 				m.table.SetRows(rows)
 			}
 		case key.Matches(msg, constants.Keymap.Create):
 			return m, goToAddCmd()
-		case key.Matches(msg, constants.Keymap.Back):
+		case key.Matches(msg, constants.Keymap.Quit):
 			return m, tea.Quit
+		case key.Matches(msg, constants.Keymap.Enter):
+			if len(m.table.Rows()) > 0 {
+				selectedRow := m.table.SelectedRow()
+
+				id, err := strconv.Atoi(selectedRow[0])
+				if err != nil {
+					return m, errorCmd(err, backToTableCmd())
+				}
+
+				return m, goToEditCmd(id)
+			}
 		}
 	case backMsg:
-		//TODO: add view for showing errors
-		rows, _ := getExpensesRows()
+		rows, err := getExpensesRows()
+		if err != nil {
+			return m, errorCmd(err, backToTableCmd())
+		}
+
 		m.table.SetRows(rows)
 	}
 

@@ -455,3 +455,91 @@ func TestDeleteExpense(t *testing.T) {
 		})
 	}
 }
+
+func TestGetExpense(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	type testCase struct {
+		name            string
+		storageFn       func(t *testing.T) domain.ExpenseStorage
+		expenseId       int
+		expectedExpense domain.Expense
+		expectedErr     error
+	}
+
+	testCases := []testCase{
+		{
+			name: "Successful retrieval",
+			storageFn: func(t *testing.T) domain.ExpenseStorage {
+				t.Helper()
+
+				currentExpenses := []domain.Expense{
+					{Id: 1, Description: "Coffee", Amount: 3.5},
+					{Id: 2, Description: "Lunch", Amount: 12.0},
+				}
+
+				result := mocks.NewMockExpenseStorage(ctrl)
+				result.EXPECT().Load().Return(currentExpenses, nil).Times(1)
+
+				return result
+			},
+			expenseId: 2,
+			expectedExpense: domain.Expense{
+				Id:          2,
+				Description: "Lunch",
+				Amount:      12.0,
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "Expense not found",
+			storageFn: func(t *testing.T) domain.ExpenseStorage {
+				t.Helper()
+
+				currentExpenses := []domain.Expense{
+					{Id: 1, Description: "Coffee", Amount: 3.5},
+				}
+
+				result := mocks.NewMockExpenseStorage(ctrl)
+				result.EXPECT().Load().Return(currentExpenses, nil).Times(1)
+
+				return result
+			},
+			expenseId:       54,
+			expectedExpense: domain.Expense{},
+			expectedErr:     &ExpenseNotFoundError{ID: 54},
+		},
+		{
+			name: "Load error",
+			storageFn: func(t *testing.T) domain.ExpenseStorage {
+				t.Helper()
+
+				result := mocks.NewMockExpenseStorage(ctrl)
+				result.EXPECT().Load().Return(nil, assert.AnError).Times(1)
+
+				return result
+			},
+			expenseId:       1,
+			expectedExpense: domain.Expense{},
+			expectedErr:     assert.AnError,
+		},
+	}
+
+	for _, tt := range testCases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mockStorage := tt.storageFn(t)
+			result, err := getExpense(mockStorage, tt.expenseId)
+
+			if tt.expectedErr != nil {
+				assert.ErrorIs(t, err, tt.expectedErr)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedExpense, result)
+			}
+		})
+	}
+}

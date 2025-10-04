@@ -4,7 +4,13 @@ import tea "github.com/charmbracelet/bubbletea"
 
 type backMsg struct{}
 type addMsg struct{}
-type errorMsg struct{ error }
+type errorMsg struct {
+	error
+	sourceBack tea.Cmd
+}
+type editMsg struct {
+	id int
+}
 
 func backToTableCmd() tea.Cmd {
 	return func() tea.Msg {
@@ -18,8 +24,14 @@ func goToAddCmd() tea.Cmd {
 	}
 }
 
-func errorCmd(err error) tea.Cmd {
+func goToEditCmd(id int) tea.Cmd {
 	return func() tea.Msg {
-		return errorMsg{err}
+		return editMsg{id}
+	}
+}
+
+func errorCmd(err error, sourceBack tea.Cmd) tea.Cmd {
+	return func() tea.Msg {
+		return errorMsg{err, sourceBack}
 	}
 }

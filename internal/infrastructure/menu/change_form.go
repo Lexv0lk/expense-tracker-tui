@@ -3,7 +3,9 @@ package menu
 import (
 	"fmt"
 	"github.com/Lexv0lk/expense-tracker-tui/internal/application/expense"
+	"github.com/Lexv0lk/expense-tracker-tui/internal/domain"
 	"github.com/Lexv0lk/expense-tracker-tui/internal/infrastructure/menu/constants"
+	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -14,6 +16,8 @@ import (
 )
 
 var (
+	titleStyle = lipgloss.NewStyle().Bold(true).Underline(true)
+
 	focusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 	blurredStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 
@@ -21,14 +25,21 @@ var (
 	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Submit"))
 )
 
-type addModel struct {
+const title = "Expense Change Form"
+
+type changeFormModel struct {
 	focusIndex int
 	inputs     []textinput.Model
+	editingId  *int
+
+	//help
+	helpModel      help.Model
+	navigationKeys NavigationKeyMap
 }
 
-func (m addModel) Init() tea.Cmd { return nil }
+func (m changeFormModel) Init() tea.Cmd { return nil }
 
-func (m addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m changeFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -52,10 +63,33 @@ func (m addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, nil
 					}
 
-					//TODO: add view for showing errors
-					amount, _ := strconv.ParseFloat(m.inputs[1].Value(), 64)
-					date, _ := time.Parse("2006-01-02", m.inputs[2].Value())
-					expense.AddExpense(m.inputs[0].Value(), amount, date)
+					description := m.inputs[0].Value()
+					if description == "" {
+						description = "-"
+					}
+
+					amount, err := strconv.ParseFloat(m.inputs[1].Value(), 64)
+					if err != nil {
+						return m, errorCmd(err, goToAddCmd())
+					}
+
+					date, err := time.Parse("2006-01-02", m.inputs[2].Value())
+					if err != nil {
+						return m, errorCmd(err, goToAddCmd())
+					}
+
+					if m.editingId == nil {
+						_, err = expense.AddExpense(description, amount, date)
+						if err != nil {
+							return m, errorCmd(err, goToAddCmd())
+						}
+					} else {
+						_, err = expense.UpdateExpense(*m.editingId, description, amount, date)
+						if err != nil {
+							return m, errorCmd(err, goToAddCmd())
+						}
+					}
+
 					return m, backToTableCmd()
 				} else {
 					m.focusIndex++
@@ -66,6 +100,12 @@ func (m addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else if key.Matches(msg, constants.Keymap.Down) {
 					m.focusIndex++
 				}
+			}
+
+			if m.focusIndex > len(m.inputs) {
+				m.focusIndex = 0
+			} else if m.focusIndex < 0 {
+				m.focusIndex = len(m.inputs)
 			}
 
 			cmds := make([]tea.Cmd, len(m.inputs))
@@ -94,8 +134,9 @@ func (m addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m addModel) View() string {
+func (m changeFormModel) View() string {
 	var b strings.Builder
+	b.WriteString(titleStyle.Render(title) + "\n\n")
 
 	for i := range m.inputs {
 		b.WriteString(m.inputs[i].View())
@@ -110,13 +151,16 @@ func (m addModel) View() string {
 		button = &focusedButton
 	}
 	fmt.Fprintf(&b, "\n\n%s\n\n", *button)
+	b.WriteString(m.helpModel.View(m.navigationKeys))
 
 	return b.String()
 }
 
-func getAdditionModel() (tea.Model, error) {
-	m := addModel{
-		inputs: make([]textinput.Model, 3),
+func getAddingModel() (tea.Model, error) {
+	m := changeFormModel{
+		inputs:         make([]textinput.Model, 3),
+		helpModel:      help.New(),
+		navigationKeys: getNavigationKeymap(),
 	}
 
 	var t textinput.Model
@@ -147,7 +191,25 @@ func getAdditionModel() (tea.Model, error) {
 	return m, nil
 }
 
-func (m addModel) updateInputs(msg tea.Msg) tea.Cmd {
+func getChangeModel(existingExpense domain.Expense) (tea.Model, error) {
+	m, err := getAddingModel()
+
+	if err != nil {
+		return nil, err
+	}
+
+	cModel := m.(changeFormModel)
+	cModel.inputs[0].SetValue(existingExpense.Description)
+	cModel.inputs[1].SetValue(fmt.Sprintf("%.2f", existingExpense.Amount))
+	cModel.inputs[2].SetValue(existingExpense.SpentAt.Format("2006-01-02"))
+
+	id := existingExpense.Id
+	cModel.editingId = &id
+
+	return cModel, nil
+}
+
+func (m changeFormModel) updateInputs(msg tea.Msg) tea.Cmd {
 	cmds := make([]tea.Cmd, len(m.inputs))
 
 	for i := range m.inputs {

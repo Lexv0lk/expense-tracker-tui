@@ -90,6 +90,24 @@ func deleteExpense(storage domain.ExpenseStorage, id int) error {
 	return nil
 }
 
+func getExpense(storage domain.ExpenseStorage, id int) (domain.Expense, error) {
+	expenses, err := storage.Load()
+
+	if err != nil {
+		return domain.Expense{}, fmt.Errorf("Error loading expenses: %w", err)
+	}
+
+	expense, _, found := lo.FindIndexOf(expenses, func(e domain.Expense) bool {
+		return e.Id == id
+	})
+
+	if !found {
+		return domain.Expense{}, &ExpenseNotFoundError{ID: id}
+	}
+
+	return expense, nil
+}
+
 func getNextExpenseId(expenses []domain.Expense) int {
 	if len(expenses) == 0 {
 		return 1
