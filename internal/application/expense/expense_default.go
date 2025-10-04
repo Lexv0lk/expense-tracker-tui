@@ -9,6 +9,10 @@ func AddExpense(description string, amount float64, spentTime time.Time) (domain
 	return addExpense(defaultExpenseStorage, spentTime, description, amount)
 }
 
+func DeleteExpense(id int) error {
+	return deleteExpense(defaultExpenseStorage, id)
+}
+
 func GetAllExpenses() ([]domain.Expense, error) {
 	return defaultExpenseStorage.Load()
 }
