@@ -41,7 +41,7 @@ func updateExpense(storage domain.ExpenseStorage, id int, description string, am
 	var updatedExpense domain.Expense
 	found := false
 
-	for i, _ := range expenses {
+	for i := range expenses {
 		if expenses[i].Id == id {
 			expenses[i].Description = description
 			expenses[i].Amount = amount
@@ -106,6 +106,34 @@ func getExpense(storage domain.ExpenseStorage, id int) (domain.Expense, error) {
 	}
 
 	return expense, nil
+}
+
+func getAllExpensesSummary(storage domain.ExpenseStorage) (float64, error) {
+	expenses, err := storage.Load()
+
+	if err != nil {
+		return 0, fmt.Errorf("Error loading expenses: %w", err)
+	}
+
+	return lo.SumBy(expenses, func(e domain.Expense) float64 {
+		return e.Amount
+	}), nil
+}
+
+func getExpensesSummary(storage domain.ExpenseStorage, year int, month time.Month) (float64, error) {
+	expenses, err := storage.Load()
+
+	if err != nil {
+		return 0, fmt.Errorf("Error loading expenses: %w", err)
+	}
+
+	filteredExpenses := lo.Filter(expenses, func(e domain.Expense, _ int) bool {
+		return e.SpentAt.Year() == year && e.SpentAt.Month() == month
+	})
+
+	return lo.SumBy(filteredExpenses, func(e domain.Expense) float64 {
+		return e.Amount
+	}), nil
 }
 
 func getNextExpenseId(expenses []domain.Expense) int {

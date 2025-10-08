@@ -11,6 +11,7 @@ type errorMsg struct {
 type editMsg struct {
 	id int
 }
+type summaryMsg struct{}
 
 func backToTableCmd() tea.Cmd {
 	return func() tea.Msg {
@@ -27,6 +28,12 @@ func goToAddCmd() tea.Cmd {
 func goToEditCmd(id int) tea.Cmd {
 	return func() tea.Msg {
 		return editMsg{id}
+	}
+}
+
+func goToSummaryCmd() tea.Cmd {
+	return func() tea.Msg {
+		return summaryMsg{}
 	}
 }
 

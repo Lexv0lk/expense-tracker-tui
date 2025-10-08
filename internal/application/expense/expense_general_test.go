@@ -543,3 +543,193 @@ func TestGetExpense(t *testing.T) {
 		})
 	}
 }
+
+func TestExpenseFileStorage_Load(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	type testCase struct {
+		name           string
+		storageFn      func(t *testing.T) domain.ExpenseStorage
+		expectedAmount float64
+		expectedErr    error
+	}
+
+	testCases := []testCase{
+		{
+			name: "Successful summary calculation",
+			storageFn: func(t *testing.T) domain.ExpenseStorage {
+				t.Helper()
+
+				currentExpenses := []domain.Expense{
+					{Id: 1, Description: "Coffee", Amount: 3.5},
+					{Id: 2, Description: "Lunch", Amount: 12.0},
+					{Id: 3, Description: "Dinner", Amount: 20.0},
+				}
+
+				result := mocks.NewMockExpenseStorage(ctrl)
+				result.EXPECT().Load().Return(currentExpenses, nil).Times(1)
+
+				return result
+			},
+			expectedAmount: 35.5,
+			expectedErr:    nil,
+		},
+		{
+			name: "Empty expenses list",
+			storageFn: func(t *testing.T) domain.ExpenseStorage {
+				t.Helper()
+
+				currentExpenses := []domain.Expense{}
+
+				result := mocks.NewMockExpenseStorage(ctrl)
+				result.EXPECT().Load().Return(currentExpenses, nil).Times(1)
+
+				return result
+			},
+			expectedAmount: 0,
+			expectedErr:    nil,
+		},
+		{
+			name: "Load error",
+			storageFn: func(t *testing.T) domain.ExpenseStorage {
+				t.Helper()
+
+				result := mocks.NewMockExpenseStorage(ctrl)
+				result.EXPECT().Load().Return(nil, assert.AnError).Times(1)
+
+				return result
+			},
+			expectedAmount: 0,
+			expectedErr:    assert.AnError,
+		},
+	}
+
+	for _, tt := range testCases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mockStorage := tt.storageFn(t)
+			result, err := getAllExpensesSummary(mockStorage)
+
+			if tt.expectedErr != nil {
+				assert.ErrorIs(t, err, tt.expectedErr)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedAmount, result)
+			}
+		})
+	}
+}
+
+func TestGetExpensesSummary(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+
+	type testCase struct {
+		name           string
+		storageFn      func(t *testing.T) domain.ExpenseStorage
+		year           int
+		month          time.Month
+		expectedAmount float64
+		expectedErr    error
+	}
+
+	testCases := []testCase{
+		{
+			name: "Successful monthly summary calculation",
+			storageFn: func(t *testing.T) domain.ExpenseStorage {
+				t.Helper()
+
+				currentExpenses := []domain.Expense{
+					{Id: 1, Description: "Coffee", Amount: 3.5, SpentAt: time.Date(2024, 1, 1, 9, 0, 0, 0, time.UTC)},
+					{Id: 2, Description: "Lunch", Amount: 12.0, SpentAt: time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC)},
+					{Id: 3, Description: "Dinner", Amount: 20.0, SpentAt: time.Date(2024, 2, 1, 19, 0, 0, 0, time.UTC)},
+				}
+
+				result := mocks.NewMockExpenseStorage(ctrl)
+				result.EXPECT().Load().Return(currentExpenses, nil).Times(1)
+
+				return result
+			},
+			year:           2024,
+			month:          time.January,
+			expectedAmount: 15.5,
+		},
+		{
+			name: "No expenses for the month",
+			storageFn: func(t *testing.T) domain.ExpenseStorage {
+				t.Helper()
+
+				currentExpenses := []domain.Expense{
+					{Id: 1, Description: "Coffee", Amount: 3.5, SpentAt: time.Date(2024, 1, 1, 9, 0, 0, 0, time.UTC)},
+					{Id: 2, Description: "Lunch", Amount: 12.0, SpentAt: time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC)},
+				}
+
+				result := mocks.NewMockExpenseStorage(ctrl)
+				result.EXPECT().Load().Return(currentExpenses, nil).Times(1)
+
+				return result
+			},
+			year:           2024,
+			month:          time.February,
+			expectedAmount: 0,
+			expectedErr:    nil,
+		},
+		{
+			name: "Load error",
+			storageFn: func(t *testing.T) domain.ExpenseStorage {
+				t.Helper()
+
+				result := mocks.NewMockExpenseStorage(ctrl)
+				result.EXPECT().Load().Return(nil, assert.AnError).Times(1)
+
+				return result
+			},
+			year:           2024,
+			month:          time.January,
+			expectedAmount: 0,
+			expectedErr:    assert.AnError,
+		},
+		{
+			name: "Expenses in different years",
+			storageFn: func(t *testing.T) domain.ExpenseStorage {
+				t.Helper()
+
+				currentExpenses := []domain.Expense{
+					{Id: 1, Description: "Coffee", Amount: 3.5, SpentAt: time.Date(2023, 12, 31, 9, 0, 0, 0, time.UTC)},
+					{Id: 2, Description: "Lunch", Amount: 12.0, SpentAt: time.Date(2024, 1, 15, 12, 0, 0, 0, time.UTC)},
+					{Id: 3, Description: "Dinner", Amount: 20.0, SpentAt: time.Date(2024, 1, 20, 19, 0, 0, 0, time.UTC)},
+					{Id: 4, Description: "Snacks", Amount: 5.0, SpentAt: time.Date(2024, 2, 1, 15, 0, 0, 0, time.UTC)},
+				}
+
+				result := mocks.NewMockExpenseStorage(ctrl)
+				result.EXPECT().Load().Return(currentExpenses, nil).Times(1)
+
+				return result
+			},
+			year:           2024,
+			month:          time.January,
+			expectedAmount: 32.0,
+			expectedErr:    nil,
+		},
+	}
+
+	for _, tt := range testCases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mockStorage := tt.storageFn(t)
+			result, err := getExpensesSummary(mockStorage, tt.year, tt.month)
+
+			if tt.expectedErr != nil {
+				assert.ErrorIs(t, err, tt.expectedErr)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedAmount, result)
+			}
+		})
+	}
+}

@@ -10,35 +10,37 @@ type ActionKeyMap struct {
 	Create key.Binding
 	Quit   key.Binding
 	Edit   key.Binding
+	GetSum key.Binding
 }
 
 type NavigationKeyMap struct {
-	Back key.Binding
-	Up   key.Binding
-	Down key.Binding
+	Back    key.Binding
+	Up      key.Binding
+	Down    key.Binding
+	Confirm key.Binding
 }
 
 // ShortHelp implements the ActionKeyMap interface.
 func (km ActionKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Delete, km.Create, km.Quit, km.Edit}
+	return []key.Binding{km.Create, km.Delete, km.Edit, km.GetSum, km.Quit}
 }
 
 // FullHelp implements the ActionKeyMap interface.
 func (km ActionKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Delete, km.Create, km.Quit, km.Edit},
+		{km.Create, km.Delete, km.Edit, km.GetSum, km.Quit},
 	}
 }
 
 // ShortHelp implements the NavigationKeyMap interface.
 func (km NavigationKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Back, km.Up, km.Down}
+	return []key.Binding{km.Confirm, km.Up, km.Down, km.Back}
 }
 
 // FullHelp implements the NavigationKeyMap interface.
 func (km NavigationKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Back, km.Up, km.Down},
+		{km.Confirm, km.Up, km.Down, km.Back},
 	}
 }
 
@@ -49,6 +51,8 @@ func getActionKeymap() ActionKeyMap {
 		Create: constants.Keymap.Create,
 		Quit:   constants.Keymap.Quit,
 		Edit:   constants.Keymap.Enter,
+		GetSum: key.NewBinding(key.WithKeys("s"),
+			key.WithHelp("s", "summary")),
 	}
 }
 
@@ -58,5 +62,9 @@ func getNavigationKeymap() NavigationKeyMap {
 		Back: constants.Keymap.Back,
 		Up:   constants.Keymap.Up,
 		Down: constants.Keymap.Down,
+		Confirm: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "confirm"),
+		),
 	}
 }

@@ -1,6 +1,7 @@
 package menu
 
 import (
+	"fmt"
 	"github.com/Lexv0lk/expense-tracker-tui/internal/application/expense"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -11,12 +12,14 @@ const (
 	tableState state = iota
 	addState
 	msgState
+	sumState
 )
 
 type MainModel struct {
 	currentState state
 	table        tableModel
 	addInput     changeFormModel
+	summaryModel summaryInfoModel
 	msgView      msgModel
 }
 
@@ -39,6 +42,13 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case backMsg:
+		allExpensesSum, err := expense.GetAllExpensesSummary()
+
+		if err != nil {
+			return m, errorCmd(fmt.Errorf("Error when calculating expenses sum: %w", err), backToTableCmd())
+		}
+
+		m.table.expensesSum = allExpensesSum
 		m.currentState = tableState
 	case addMsg:
 		newAddInput, _ := getAddingModel()
@@ -65,6 +75,10 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.addInput = cEditInput
 		m.currentState = addState
+	case summaryMsg:
+		newSummaryModel := newSummaryInfoModel()
+		m.summaryModel = newSummaryModel
+		m.currentState = sumState
 	case errorMsg:
 		newMsgModel := getNewMsgModel(msg.error.Error(), msg.sourceBack)
 		cMsgModel, ok := newMsgModel.(msgModel)
@@ -98,6 +112,16 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.addInput = addModel
 		cmd = newCmd
+	case sumState:
+		newSummary, newCmd := m.summaryModel.Update(msg)
+		summaryModel, ok := newSummary.(summaryInfoModel)
+
+		if !ok {
+			panic("Failed assertion to summaryInfoModel")
+		}
+
+		m.summaryModel = summaryModel
+		cmd = newCmd
 	case msgState:
 		newMsg, newCmd := m.msgView.Update(msg)
 		msgModel, ok := newMsg.(msgModel)
@@ -121,6 +145,8 @@ func (m MainModel) View() string {
 		return m.addInput.View()
 	case msgState:
 		return m.msgView.View()
+	case sumState:
+		return m.summaryModel.View()
 	default:
 		panic("Unknown menu state")
 	}

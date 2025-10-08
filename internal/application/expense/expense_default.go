@@ -24,3 +24,11 @@ func GetExpense(id int) (domain.Expense, error) {
 func GetAllExpenses() ([]domain.Expense, error) {
 	return defaultExpenseStorage.Load()
 }
+
+func GetAllExpensesSummary() (float64, error) {
+	return getAllExpensesSummary(defaultExpenseStorage)
+}
+
+func GetMonthlyExpensesSummary(year int, month time.Month) (float64, error) {
+	return getExpensesSummary(defaultExpenseStorage, year, month)
+}

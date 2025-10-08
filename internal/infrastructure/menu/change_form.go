@@ -25,7 +25,7 @@ var (
 	blurredButton = fmt.Sprintf("[ %s ]", blurredStyle.Render("Submit"))
 )
 
-const title = "Expense Change Form"
+const changeFormTitle = "Expense Change Form"
 
 type changeFormModel struct {
 	focusIndex int
@@ -136,7 +136,7 @@ func (m changeFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m changeFormModel) View() string {
 	var b strings.Builder
-	b.WriteString(titleStyle.Render(title) + "\n\n")
+	b.WriteString(titleStyle.Render(changeFormTitle) + "\n\n")
 
 	for i := range m.inputs {
 		b.WriteString(m.inputs[i].View())

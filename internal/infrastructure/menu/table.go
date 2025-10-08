@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -22,6 +23,7 @@ type tableModel struct {
 	table         table.Model
 	help          help.Model
 	actionsKeyMap ActionKeyMap
+	expensesSum   float64
 }
 
 func getNewTableModel() (tea.Model, error) {
@@ -93,12 +95,20 @@ func (m tableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, errorCmd(err, backToTableCmd())
 				}
 
+				allExpensesSum, err := expense.GetAllExpensesSummary()
+				if err != nil {
+					return m, errorCmd(fmt.Errorf("Error when calculating expenses sum: %w", err), backToTableCmd())
+				}
+
+				m.expensesSum = allExpensesSum
 				m.table.SetRows(rows)
 			}
 		case key.Matches(msg, constants.Keymap.Create):
 			return m, goToAddCmd()
 		case key.Matches(msg, constants.Keymap.Quit):
 			return m, tea.Quit
+		case key.Matches(msg, m.actionsKeyMap.GetSum):
+			return m, goToSummaryCmd()
 		case key.Matches(msg, constants.Keymap.Enter):
 			if len(m.table.Rows()) > 0 {
 				selectedRow := m.table.SelectedRow()
@@ -125,7 +135,12 @@ func (m tableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m tableModel) View() string {
-	return tableStyle.Render(m.table.View()+"\n") + "\n" + m.help.View(m.actionsKeyMap)
+	var sb strings.Builder
+	sb.WriteString(tableStyle.Render(m.table.View() + "\n"))
+	sb.WriteString("\n" + fmt.Sprintf("Total spent: %.2f", m.expensesSum) + "\n")
+	sb.WriteString(m.help.View(m.actionsKeyMap))
+
+	return sb.String()
 }
 
 func getExpensesRows() ([]table.Row, error) {
