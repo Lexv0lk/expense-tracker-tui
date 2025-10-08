@@ -17,7 +17,7 @@ type msgModel struct {
 }
 
 func getNewMsgModel(content string, backCmd tea.Cmd) tea.Model {
-	const width = 4 + 30 + 10 + 12
+	const width = 4 + 30 + 10 + 12 + 15
 	const height = 7
 
 	vp := viewport.New(width, height)
@@ -70,9 +70,7 @@ func (m msgModel) Init() tea.Cmd { return nil }
 func (m msgModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
 	case tea.KeyMsg:
-		if m.err != nil {
-			return m, m.backCmd
-		}
+		return m, m.backCmd
 	}
 
 	return m, nil

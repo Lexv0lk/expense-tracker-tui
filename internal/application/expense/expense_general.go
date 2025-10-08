@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func addExpense(storage domain.ExpenseStorage, spentTime time.Time, description string, amount float64) (domain.Expense, error) {
+func addExpense(storage domain.ExpenseStorage, spentTime time.Time, description string, category string, amount float64) (domain.Expense, error) {
 	expenses, err := storage.Load()
 
 	if err != nil {
@@ -17,6 +17,7 @@ func addExpense(storage domain.ExpenseStorage, spentTime time.Time, description 
 	newExpense := domain.Expense{
 		Id:          getNextExpenseId(expenses),
 		Description: description,
+		Category:    category,
 		Amount:      amount,
 		SpentAt:     spentTime,
 	}
@@ -31,7 +32,7 @@ func addExpense(storage domain.ExpenseStorage, spentTime time.Time, description 
 	return newExpense, nil
 }
 
-func updateExpense(storage domain.ExpenseStorage, id int, description string, amount float64, spentAt time.Time) (domain.Expense, error) {
+func updateExpense(storage domain.ExpenseStorage, id int, description string, category string, amount float64, spentAt time.Time) (domain.Expense, error) {
 	expenses, err := storage.Load()
 
 	if err != nil {
@@ -46,6 +47,7 @@ func updateExpense(storage domain.ExpenseStorage, id int, description string, am
 			expenses[i].Description = description
 			expenses[i].Amount = amount
 			expenses[i].SpentAt = spentAt
+			expenses[i].Category = category
 			updatedExpense = expenses[i]
 			found = true
 			break

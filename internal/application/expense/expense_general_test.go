@@ -79,8 +79,8 @@ func TestAddExpense(t *testing.T) {
 				t.Helper()
 
 				currentExpenses := []domain.Expense{
-					{Id: 1, Description: "Coffee", Amount: 3.5},
-					{Id: 2, Description: "Lunch", Amount: 12.0},
+					{Id: 1, Description: "Coffee", Category: "Food", Amount: 3.5},
+					{Id: 2, Description: "Lunch", Category: "Food", Amount: 12.0},
 				}
 
 				resExpenses := make([]domain.Expense, len(currentExpenses))
@@ -96,6 +96,7 @@ func TestAddExpense(t *testing.T) {
 			expectedExpense: domain.Expense{
 				Id:          3,
 				Description: "Dinner",
+				Category:    "Food",
 				Amount:      20.0,
 				SpentAt:     time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC),
 			},
@@ -118,6 +119,7 @@ func TestAddExpense(t *testing.T) {
 			expectedExpense: domain.Expense{
 				Id:          1,
 				Description: "Groceries",
+				Category:    "Food",
 				Amount:      45.0,
 			},
 			expectedErr: nil,
@@ -157,6 +159,7 @@ func TestAddExpense(t *testing.T) {
 			expectedExpense: domain.Expense{
 				Id:          2,
 				Description: "Book",
+				Category:    "Education",
 				Amount:      15.0,
 			},
 			expectedErr: assert.AnError,
@@ -169,7 +172,7 @@ func TestAddExpense(t *testing.T) {
 			t.Parallel()
 
 			mockStorage := tt.storageFn(t, tt.expectedExpense)
-			result, err := addExpense(mockStorage, tt.expectedExpense.SpentAt, tt.expectedExpense.Description, tt.expectedExpense.Amount)
+			result, err := addExpense(mockStorage, tt.expectedExpense.SpentAt, tt.expectedExpense.Description, tt.expectedExpense.Category, tt.expectedExpense.Amount)
 
 			if tt.expectedErr != nil {
 				assert.ErrorIs(t, err, tt.expectedErr)
@@ -199,8 +202,8 @@ func TestUpdateExpense(t *testing.T) {
 				t.Helper()
 
 				currentExpenses := []domain.Expense{
-					{Id: 1, Description: "Coffee", Amount: 3.5, SpentAt: time.Date(2024, 1, 1, 9, 0, 0, 0, time.UTC)},
-					{Id: 2, Description: "Lunch", Amount: 12.0, SpentAt: time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)},
+					{Id: 1, Description: "Coffee", Category: "Food", Amount: 3.5, SpentAt: time.Date(2024, 1, 1, 9, 0, 0, 0, time.UTC)},
+					{Id: 2, Description: "Lunch", Category: "Food", Amount: 12.0, SpentAt: time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)},
 				}
 
 				resExpenses := []domain.Expense{
@@ -217,6 +220,7 @@ func TestUpdateExpense(t *testing.T) {
 			expectedExpense: domain.Expense{
 				Id:          2,
 				Description: "Brunch",
+				Category:    "Test",
 				Amount:      15.0,
 				SpentAt:     time.Date(2024, 1, 1, 11, 0, 0, 0, time.UTC),
 			},
@@ -286,7 +290,7 @@ func TestUpdateExpense(t *testing.T) {
 				t.Helper()
 
 				currentExpenses := []domain.Expense{
-					{Id: 1, Description: "Groceries", Amount: 50.0, SpentAt: time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC)},
+					{Id: 1, Description: "Groceries", Category: "Food", Amount: 50.0, SpentAt: time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC)},
 				}
 				resExpenses := []domain.Expense{
 					expense,
@@ -301,6 +305,7 @@ func TestUpdateExpense(t *testing.T) {
 			expectedExpense: domain.Expense{
 				Id:          1,
 				Description: "Groceries",
+				Category:    "Food",
 				Amount:      50.0,
 				SpentAt:     time.Date(2024, 1, 1, 10, 0, 0, 0, time.UTC),
 			},
@@ -314,7 +319,7 @@ func TestUpdateExpense(t *testing.T) {
 			t.Parallel()
 
 			mockStorage := tt.storageFn(t, tt.expectedExpense)
-			result, err := updateExpense(mockStorage, tt.expectedExpense.Id, tt.expectedExpense.Description, tt.expectedExpense.Amount, tt.expectedExpense.SpentAt)
+			result, err := updateExpense(mockStorage, tt.expectedExpense.Id, tt.expectedExpense.Description, tt.expectedExpense.Category, tt.expectedExpense.Amount, tt.expectedExpense.SpentAt)
 
 			if tt.expectedErr != nil {
 				assert.ErrorIs(t, err, tt.expectedErr)

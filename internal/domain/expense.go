@@ -6,6 +6,7 @@ type Expense struct {
 	Id          int
 	SpentAt     time.Time
 	Description string
+	Category    string
 	Amount      float64
 }
 

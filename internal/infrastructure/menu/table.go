@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/samber/lo"
@@ -24,24 +25,32 @@ type tableModel struct {
 	help          help.Model
 	actionsKeyMap ActionKeyMap
 	expensesSum   float64
+
+	allExpenses    []domain.Expense
+	expensesToShow []domain.Expense
+
+	//filter
+	filterEnabled bool
+	filterInput   textinput.Model
 }
 
 func getNewTableModel() (tea.Model, error) {
 	columns := []table.Column{
 		{Title: "ID", Width: 4},
+		{Title: "Category", Width: 15},
 		{Title: "Description", Width: 30},
 		{Title: "Amount", Width: 10},
 		{Title: "Date", Width: 12},
 	}
-	rows, err := getExpensesRows()
 
+	allExpenses, err := expense.GetAllExpenses()
 	if err != nil {
-		return nil, fmt.Errorf("error getting expenses rows: %w", err)
+		return nil, fmt.Errorf("Error getting all expenses: %w", err)
 	}
 
 	t := table.New(
 		table.WithColumns(columns),
-		table.WithRows(rows),
+		table.WithRows(lo.Map(allExpenses, getRow)),
 		table.WithFocused(false),
 		table.WithHeight(7),
 	)
@@ -60,10 +69,20 @@ func getNewTableModel() (tea.Model, error) {
 		Bold(false)
 	t.SetStyles(s)
 
+	f := textinput.New()
+	f.Placeholder = "Type to filter by category"
+	f.Prompt = "Filter: "
+	f.Width = 20
+	f.CharLimit = 0
+
 	return tableModel{
-		table:         t,
-		help:          help.New(),
-		actionsKeyMap: getActionKeymap(),
+		table:          t,
+		help:           help.New(),
+		actionsKeyMap:  getActionKeymap(),
+		filterEnabled:  false,
+		filterInput:    f,
+		allExpenses:    allExpenses,
+		expensesToShow: allExpenses,
 	}, nil
 }
 
@@ -75,67 +94,86 @@ func (m tableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, constants.Keymap.Delete):
-			if len(m.table.Rows()) > 0 {
-				selectedRow := m.table.SelectedRow()
-
-				id, err := strconv.Atoi(selectedRow[0])
-				if err != nil {
-					return m, errorCmd(err, backToTableCmd())
-				}
-
-				err = expense.DeleteExpense(id)
-				if err != nil {
-					return m, errorCmd(err, backToTableCmd())
-				}
-
-				rows, err := getExpensesRows()
-				if err != nil {
-					return m, errorCmd(err, backToTableCmd())
-				}
-
-				allExpensesSum, err := expense.GetAllExpensesSummary()
-				if err != nil {
-					return m, errorCmd(fmt.Errorf("Error when calculating expenses sum: %w", err), backToTableCmd())
-				}
-
-				m.expensesSum = allExpensesSum
-				m.table.SetRows(rows)
+		if m.filterEnabled {
+			switch {
+			case key.Matches(msg, constants.Keymap.Quit):
+				return m, tea.Quit
+			case key.Matches(msg, m.actionsKeyMap.Filter):
+				m.filterEnabled = false
+				m.filterInput.Blur()
+				m.table.Focus()
 			}
-		case key.Matches(msg, constants.Keymap.Create):
-			return m, goToAddCmd()
-		case key.Matches(msg, constants.Keymap.Quit):
-			return m, tea.Quit
-		case key.Matches(msg, m.actionsKeyMap.GetSum):
-			return m, goToSummaryCmd()
-		case key.Matches(msg, constants.Keymap.Enter):
-			if len(m.table.Rows()) > 0 {
-				selectedRow := m.table.SelectedRow()
+		} else {
+			switch {
+			case key.Matches(msg, constants.Keymap.Delete):
+				if len(m.table.Rows()) > 0 {
+					selectedRow := m.table.SelectedRow()
 
-				id, err := strconv.Atoi(selectedRow[0])
-				if err != nil {
-					return m, errorCmd(err, backToTableCmd())
+					id, err := strconv.Atoi(selectedRow[0])
+					if err != nil {
+						return m, errorCmd(err, backToTableCmd())
+					}
+
+					err = expense.DeleteExpense(id)
+					if err != nil {
+						return m, errorCmd(err, backToTableCmd())
+					}
+
+					err = m.UpdateExpenses()
+					if err != nil {
+						return m, errorCmd(err, backToTableCmd())
+					}
 				}
+			case key.Matches(msg, constants.Keymap.Create):
+				return m, goToAddCmd()
+			case key.Matches(msg, constants.Keymap.Quit):
+				return m, tea.Quit
+			case key.Matches(msg, m.actionsKeyMap.GetSum):
+				return m, goToSummaryCmd()
+			case key.Matches(msg, constants.Keymap.Enter):
+				if len(m.table.Rows()) > 0 {
+					selectedRow := m.table.SelectedRow()
 
-				return m, goToEditCmd(id)
+					id, err := strconv.Atoi(selectedRow[0])
+					if err != nil {
+						return m, errorCmd(err, backToTableCmd())
+					}
+
+					return m, goToEditCmd(id)
+				}
+			case key.Matches(msg, m.actionsKeyMap.Filter):
+				m.filterEnabled = true
+				m.table.Blur()
+				m.filterInput.SetValue("")
+				m.filterInput.Focus()
 			}
 		}
 	case backMsg:
-		rows, err := getExpensesRows()
+		err := m.UpdateExpenses()
 		if err != nil {
 			return m, errorCmd(err, backToTableCmd())
 		}
-
-		m.table.SetRows(rows)
 	}
 
+	m.UpdateShowData()
 	m.table, cmd = m.table.Update(msg)
+
+	if m.filterEnabled {
+		newFilterInput, filterCmd := m.filterInput.Update(msg)
+		cmd = tea.Batch(cmd, filterCmd)
+		m.filterInput = newFilterInput
+	}
+
 	return m, cmd
 }
 
 func (m tableModel) View() string {
 	var sb strings.Builder
+
+	if m.filterEnabled {
+		sb.WriteString(m.filterInput.View() + "\n\n")
+	}
+
 	sb.WriteString(tableStyle.Render(m.table.View() + "\n"))
 	sb.WriteString("\n" + fmt.Sprintf("Total spent: %.2f", m.expensesSum) + "\n")
 	sb.WriteString(m.help.View(m.actionsKeyMap))
@@ -143,19 +181,37 @@ func (m tableModel) View() string {
 	return sb.String()
 }
 
-func getExpensesRows() ([]table.Row, error) {
+func (m *tableModel) UpdateExpenses() error {
 	allExpenses, err := expense.GetAllExpenses()
-
 	if err != nil {
-		return nil, fmt.Errorf("error getting all expenses: %w", err)
+		return fmt.Errorf("error getting all expenses: %w", err)
 	}
 
-	return lo.Map(allExpenses, getRow), nil
+	m.allExpenses = allExpenses
+	return nil
+}
+
+func (m *tableModel) UpdateShowData() {
+	if m.filterEnabled {
+		filterVal := m.filterInput.Value()
+		filtered := lo.Filter(m.allExpenses, func(expense domain.Expense, _ int) bool {
+			return strings.Contains(strings.ToLower(expense.Category), strings.ToLower(filterVal))
+		})
+		m.expensesToShow = filtered
+	} else {
+		m.expensesToShow = m.allExpenses
+	}
+
+	m.expensesSum = lo.SumBy(m.expensesToShow, func(expense domain.Expense) float64 {
+		return expense.Amount
+	})
+	m.table.SetRows(lo.Map(m.expensesToShow, getRow))
 }
 
 func getRow(expense domain.Expense, _ int) table.Row {
 	return table.Row{
 		strconv.Itoa(expense.Id),
+		expense.Category,
 		expense.Description,
 		fmt.Sprintf("%.2f", expense.Amount),
 		expense.SpentAt.Format("2006-01-02"),

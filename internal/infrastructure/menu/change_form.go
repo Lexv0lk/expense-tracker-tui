@@ -68,23 +68,28 @@ func (m changeFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						description = "-"
 					}
 
-					amount, err := strconv.ParseFloat(m.inputs[1].Value(), 64)
+					category := m.inputs[1].Value()
+					if category == "" {
+						category = "-"
+					}
+
+					amount, err := strconv.ParseFloat(m.inputs[2].Value(), 64)
 					if err != nil {
 						return m, errorCmd(err, goToAddCmd())
 					}
 
-					date, err := time.Parse("2006-01-02", m.inputs[2].Value())
+					date, err := time.Parse("2006-01-02", m.inputs[3].Value())
 					if err != nil {
 						return m, errorCmd(err, goToAddCmd())
 					}
 
 					if m.editingId == nil {
-						_, err = expense.AddExpense(description, amount, date)
+						_, err = expense.AddExpense(description, category, amount, date)
 						if err != nil {
 							return m, errorCmd(err, goToAddCmd())
 						}
 					} else {
-						_, err = expense.UpdateExpense(*m.editingId, description, amount, date)
+						_, err = expense.UpdateExpense(*m.editingId, description, category, amount, date)
 						if err != nil {
 							return m, errorCmd(err, goToAddCmd())
 						}
@@ -158,7 +163,7 @@ func (m changeFormModel) View() string {
 
 func getAddingModel() (tea.Model, error) {
 	m := changeFormModel{
-		inputs:         make([]textinput.Model, 3),
+		inputs:         make([]textinput.Model, 4),
 		helpModel:      help.New(),
 		navigationKeys: getNavigationKeymap(),
 	}
@@ -176,10 +181,14 @@ func getAddingModel() (tea.Model, error) {
 			t.PromptStyle = focusedStyle
 			t.TextStyle = focusedStyle
 		case 1:
+			t.Placeholder = "Category"
+			t.PromptStyle = focusedStyle
+			t.TextStyle = focusedStyle
+		case 2:
 			t.Placeholder = "Amount"
 			t.SetValue("0")
 			t.Validate = validateAmount
-		case 2:
+		case 3:
 			t.Placeholder = "YYYY-MM-DD"
 			t.Validate = validateDate
 			t.SetValue(time.Now().Format("2006-01-02"))
@@ -200,8 +209,9 @@ func getChangeModel(existingExpense domain.Expense) (tea.Model, error) {
 
 	cModel := m.(changeFormModel)
 	cModel.inputs[0].SetValue(existingExpense.Description)
-	cModel.inputs[1].SetValue(fmt.Sprintf("%.2f", existingExpense.Amount))
-	cModel.inputs[2].SetValue(existingExpense.SpentAt.Format("2006-01-02"))
+	cModel.inputs[1].SetValue(existingExpense.Category)
+	cModel.inputs[2].SetValue(fmt.Sprintf("%.2f", existingExpense.Amount))
+	cModel.inputs[3].SetValue(existingExpense.SpentAt.Format("2006-01-02"))
 
 	id := existingExpense.Id
 	cModel.editingId = &id

@@ -5,16 +5,16 @@ import (
 	"time"
 )
 
-func AddExpense(description string, amount float64, spentTime time.Time) (domain.Expense, error) {
-	return addExpense(defaultExpenseStorage, spentTime, description, amount)
+func AddExpense(description string, category string, amount float64, spentTime time.Time) (domain.Expense, error) {
+	return addExpense(defaultExpenseStorage, spentTime, description, category, amount)
 }
 
 func DeleteExpense(id int) error {
 	return deleteExpense(defaultExpenseStorage, id)
 }
 
-func UpdateExpense(id int, description string, amount float64, spentAt time.Time) (domain.Expense, error) {
-	return updateExpense(defaultExpenseStorage, id, description, amount, spentAt)
+func UpdateExpense(id int, description string, category string, amount float64, spentAt time.Time) (domain.Expense, error) {
+	return updateExpense(defaultExpenseStorage, id, description, category, amount, spentAt)
 }
 
 func GetExpense(id int) (domain.Expense, error) {

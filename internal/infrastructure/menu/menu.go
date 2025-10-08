@@ -1,7 +1,6 @@
 package menu
 
 import (
-	"fmt"
 	"github.com/Lexv0lk/expense-tracker-tui/internal/application/expense"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -42,13 +41,6 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case backMsg:
-		allExpensesSum, err := expense.GetAllExpensesSummary()
-
-		if err != nil {
-			return m, errorCmd(fmt.Errorf("Error when calculating expenses sum: %w", err), backToTableCmd())
-		}
-
-		m.table.expensesSum = allExpensesSum
 		m.currentState = tableState
 	case addMsg:
 		newAddInput, _ := getAddingModel()
