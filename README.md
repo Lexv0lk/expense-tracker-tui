@@ -24,13 +24,13 @@
 - Go 1.xx or newer  
 - A terminal that supports ANSI escape codes (e.g. xterm, iTerm2, Windows terminal / WSL)  
 
-### Install & Run
-
+### Install
 ```bash
-# Install
 go install github.com/Lexv0lk/expense-tracker-tui/expense-tracker@latest
+```
 
-# Run
+### Run
+```bash
 expense-tracker
 ```
 
