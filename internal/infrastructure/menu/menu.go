@@ -9,28 +9,30 @@ type state int
 
 const (
 	tableState state = iota
-	addState
+	changeState
 	msgState
 	sumState
 )
 
 type MainModel struct {
 	currentState state
-	table        tableModel
-	addInput     changeFormModel
-	summaryModel summaryInfoModel
-	msgView      msgModel
+	models       map[state]tea.Model
 }
 
 func InitialModel() (tea.Model, error) {
-	table, err := getNewTableModel()
+	tableModel, err := newTableModel()
 	if err != nil {
 		return nil, err
 	}
 
 	return MainModel{
 		currentState: tableState,
-		table:        table.(tableModel),
+		models: map[state]tea.Model{
+			tableState:  tableModel,
+			changeState: changeFormModel{},
+			sumState:    summaryInfoModel{},
+			msgState:    msgModel{},
+		},
 	}, nil
 }
 
@@ -41,115 +43,54 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case backMsg:
-		m.currentState = tableState
-	case addMsg:
-		newAddInput, _ := getAddingModel()
-		cAddInput, ok := newAddInput.(changeFormModel)
-
-		if !ok {
-			panic("Failed assertion to changeFormModel")
+		newTable, err := m.models[tableState].(tableModel).UpdateExpenses()
+		if err != nil {
+			return m, errorCmd(err, backToTableCmd())
 		}
 
-		m.addInput = cAddInput
-		m.currentState = addState
+		m.models[tableState] = newTable
+		m.currentState = tableState
+	case addMsg:
+		newAddInput, err := newAdditionModel()
+		if err != nil {
+			return m, errorCmd(err, backToTableCmd())
+		}
+
+		m.models[changeState] = newAddInput
+		m.currentState = changeState
 	case editMsg:
 		exp, err := expense.GetExpense(msg.id)
 		if err != nil {
 			return m, errorCmd(err, backToTableCmd())
 		}
 
-		newEditInput, _ := getChangeModel(exp)
-		cEditInput, ok := newEditInput.(changeFormModel)
-
-		if !ok {
-			panic("Failed assertion to changeFormModel")
+		newEditInput, err := newChangeModel(exp)
+		if err != nil {
+			return m, errorCmd(err, backToTableCmd())
 		}
 
-		m.addInput = cEditInput
-		m.currentState = addState
+		m.models[changeState] = newEditInput
+		m.currentState = changeState
 	case summaryMsg:
-		newSummaryModel := newSummaryInfoModel()
-		m.summaryModel = newSummaryModel
+		newSummaryModel, err := newSummaryInfoModel()
+		if err != nil {
+			return m, errorCmd(err, backToTableCmd())
+		}
+
+		m.models[sumState] = newSummaryModel
 		m.currentState = sumState
 	case errorMsg:
-		newMsgModel := getNewMsgModel(msg.error.Error(), msg.sourceBack)
-		cMsgModel, ok := newMsgModel.(msgModel)
-
-		if !ok {
-			panic("Failed assertion to msgModel")
-		}
-
-		m.msgView = cMsgModel
+		m.models[msgState] = newMsgModel(msg.error.Error(), msg.sourceBack)
 		m.currentState = msgState
 	case infoMsg:
-		newMsgModel := getNewMsgModel(msg.message, msg.sourceBack)
-		cMsgModel, ok := newMsgModel.(msgModel)
-
-		if !ok {
-			panic("Failed assertion to msgModel")
-		}
-
-		m.msgView = cMsgModel
+		m.models[msgState] = newMsgModel(msg.message, msg.sourceBack)
 		m.currentState = msgState
 	}
 
-	switch m.currentState {
-	case tableState:
-		newTable, newCmd := m.table.Update(msg)
-		tableModel, ok := newTable.(tableModel)
-
-		if !ok {
-			panic("Failed assertion to tableModel")
-		}
-
-		m.table = tableModel
-		cmd = newCmd
-	case addState:
-		newAdd, newCmd := m.addInput.Update(msg)
-		addModel, ok := newAdd.(changeFormModel)
-
-		if !ok {
-			panic("Failed assertion to changeFormModel")
-		}
-
-		m.addInput = addModel
-		cmd = newCmd
-	case sumState:
-		newSummary, newCmd := m.summaryModel.Update(msg)
-		summaryModel, ok := newSummary.(summaryInfoModel)
-
-		if !ok {
-			panic("Failed assertion to summaryInfoModel")
-		}
-
-		m.summaryModel = summaryModel
-		cmd = newCmd
-	case msgState:
-		newMsg, newCmd := m.msgView.Update(msg)
-		msgModel, ok := newMsg.(msgModel)
-
-		if !ok {
-			panic("Failed assertion to msgModel")
-		}
-
-		m.msgView = msgModel
-		cmd = newCmd
-	}
-
+	m.models[m.currentState], cmd = m.models[m.currentState].Update(msg)
 	return m, cmd
 }
 
 func (m MainModel) View() string {
-	switch m.currentState {
-	case tableState:
-		return m.table.View()
-	case addState:
-		return m.addInput.View()
-	case msgState:
-		return m.msgView.View()
-	case sumState:
-		return m.summaryModel.View()
-	default:
-		panic("Unknown menu state")
-	}
+	return m.models[m.currentState].View()
 }

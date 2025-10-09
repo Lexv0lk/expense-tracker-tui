@@ -35,7 +35,7 @@ type tableModel struct {
 	filterInput   textinput.Model
 }
 
-func getNewTableModel() (tea.Model, error) {
+func newTableModel() (tea.Model, error) {
 	columns := []table.Column{
 		{Title: "ID", Width: 4},
 		{Title: "Category", Width: 15},
@@ -46,7 +46,7 @@ func getNewTableModel() (tea.Model, error) {
 
 	allExpenses, err := expense.GetAllExpenses()
 	if err != nil {
-		return nil, fmt.Errorf("Error getting all expenses: %w", err)
+		return tableModel{}, fmt.Errorf("Error getting all expenses: %w", err)
 	}
 
 	t := table.New(
@@ -120,7 +120,7 @@ func (m tableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, errorCmd(err, backToTableCmd())
 					}
 
-					err = m.UpdateExpenses()
+					m, err = m.UpdateExpenses()
 					if err != nil {
 						return m, errorCmd(err, backToTableCmd())
 					}
@@ -157,13 +157,13 @@ func (m tableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case backMsg:
-		err := m.UpdateExpenses()
+		m, err := m.UpdateExpenses()
 		if err != nil {
 			return m, errorCmd(err, backToTableCmd())
 		}
 	}
 
-	m.UpdateShowData()
+	m = m.updateShowData()
 	m.table, cmd = m.table.Update(msg)
 
 	if m.filterEnabled {
@@ -189,21 +189,21 @@ func (m tableModel) View() string {
 	return sb.String()
 }
 
-func (m *tableModel) UpdateExpenses() error {
+func (m tableModel) UpdateExpenses() (tableModel, error) {
 	allExpenses, err := expense.GetAllExpenses()
 	if err != nil {
-		return fmt.Errorf("error getting all expenses: %w", err)
+		return m, fmt.Errorf("error getting all expenses: %w", err)
 	}
 
 	m.allExpenses = allExpenses
-	return nil
+	return m, nil
 }
 
-func (m *tableModel) UpdateShowData() {
+func (m tableModel) updateShowData() tableModel {
 	if m.filterEnabled {
 		filterVal := m.filterInput.Value()
 		filtered := lo.Filter(m.allExpenses, func(expense domain.Expense, _ int) bool {
-			return strings.Contains(strings.ToLower(expense.Category), strings.ToLower(filterVal))
+			return strings.HasPrefix(strings.ToLower(expense.Category), strings.ToLower(filterVal))
 		})
 		m.expensesToShow = filtered
 	} else {
@@ -214,6 +214,8 @@ func (m *tableModel) UpdateShowData() {
 		return expense.Amount
 	})
 	m.table.SetRows(lo.Map(m.expensesToShow, getRow))
+
+	return m
 }
 
 func getStringRows(expenses []domain.Expense) [][]string {

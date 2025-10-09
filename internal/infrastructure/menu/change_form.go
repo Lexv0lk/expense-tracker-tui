@@ -135,8 +135,8 @@ func (m changeFormModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	cmd := m.updateInputs(msg)
-	return m, cmd
+	newModel, cmd := m.updateInputs(msg)
+	return newModel, cmd
 }
 
 func (m changeFormModel) View() string {
@@ -161,7 +161,17 @@ func (m changeFormModel) View() string {
 	return b.String()
 }
 
-func getAddingModel() (tea.Model, error) {
+func (m changeFormModel) updateInputs(msg tea.Msg) (changeFormModel, tea.Cmd) {
+	cmds := make([]tea.Cmd, len(m.inputs))
+
+	for i := range m.inputs {
+		m.inputs[i], cmds[i] = m.inputs[i].Update(msg)
+	}
+
+	return m, tea.Batch(cmds...)
+}
+
+func newAdditionModel() (tea.Model, error) {
 	m := changeFormModel{
 		inputs:         make([]textinput.Model, 4),
 		helpModel:      help.New(),
@@ -200,14 +210,14 @@ func getAddingModel() (tea.Model, error) {
 	return m, nil
 }
 
-func getChangeModel(existingExpense domain.Expense) (tea.Model, error) {
-	m, err := getAddingModel()
+func newChangeModel(existingExpense domain.Expense) (tea.Model, error) {
+	m, err := newAdditionModel()
 
 	if err != nil {
 		return nil, err
 	}
 
-	cModel := m.(changeFormModel)
+	cModel, _ := m.(changeFormModel)
 	cModel.inputs[0].SetValue(existingExpense.Description)
 	cModel.inputs[1].SetValue(existingExpense.Category)
 	cModel.inputs[2].SetValue(fmt.Sprintf("%.2f", existingExpense.Amount))
@@ -217,16 +227,6 @@ func getChangeModel(existingExpense domain.Expense) (tea.Model, error) {
 	cModel.editingId = &id
 
 	return cModel, nil
-}
-
-func (m changeFormModel) updateInputs(msg tea.Msg) tea.Cmd {
-	cmds := make([]tea.Cmd, len(m.inputs))
-
-	for i := range m.inputs {
-		m.inputs[i], cmds[i] = m.inputs[i].Update(msg)
-	}
-
-	return tea.Batch(cmds...)
 }
 
 func validateDate(dateStr string) error {

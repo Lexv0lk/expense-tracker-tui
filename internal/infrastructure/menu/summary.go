@@ -162,7 +162,7 @@ func (m summaryInfoModel) View() string {
 	return b.String()
 }
 
-func newSummaryInfoModel() summaryInfoModel {
+func newSummaryInfoModel() (tea.Model, error) {
 	m := summaryInfoModel{
 		inputs:         make([]textinput.Model, 2),
 		helpModel:      help.New(),
@@ -195,7 +195,7 @@ func newSummaryInfoModel() summaryInfoModel {
 
 	m.inputs[0].Focus()
 
-	return m
+	return m, nil
 }
 
 func (m summaryInfoModel) updateInputs(msg tea.Msg) tea.Cmd {

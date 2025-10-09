@@ -16,7 +16,7 @@ type msgModel struct {
 	err      error
 }
 
-func getNewMsgModel(content string, backCmd tea.Cmd) tea.Model {
+func newMsgModel(content string, backCmd tea.Cmd) msgModel {
 	const width = 4 + 30 + 10 + 12 + 15
 	const height = 7
 
