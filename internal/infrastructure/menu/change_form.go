@@ -183,6 +183,8 @@ func newAdditionModel() (tea.Model, error) {
 		t = textinput.New()
 		t.Width = 100
 		t.CharLimit = 0
+		t.PromptStyle = blurredStyle
+		t.TextStyle = blurredStyle
 
 		switch i {
 		case 0:
