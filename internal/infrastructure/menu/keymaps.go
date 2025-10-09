@@ -12,6 +12,7 @@ type ActionKeyMap struct {
 	Edit   key.Binding
 	GetSum key.Binding
 	Filter key.Binding
+	Export key.Binding
 }
 
 type NavigationKeyMap struct {
@@ -23,13 +24,13 @@ type NavigationKeyMap struct {
 
 // ShortHelp implements the ActionKeyMap interface.
 func (km ActionKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{km.Create, km.Delete, km.Edit, km.Filter, km.GetSum, km.Quit}
+	return []key.Binding{km.Create, km.Delete, km.Edit, km.Filter, km.GetSum, km.Export, km.Quit}
 }
 
 // FullHelp implements the ActionKeyMap interface.
 func (km ActionKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{km.Create, km.Delete, km.Edit, km.Filter, km.GetSum, km.Quit},
+		{km.Create, km.Delete, km.Edit, km.Filter, km.GetSum, km.Export, km.Quit},
 	}
 }
 
@@ -56,6 +57,8 @@ func getActionKeymap() ActionKeyMap {
 			key.WithHelp("s", "summary")),
 		Filter: key.NewBinding(key.WithKeys("ctrl+f"),
 			key.WithHelp("ctrl+f", "filter")),
+		Export: key.NewBinding(key.WithKeys("ctrl+e"),
+			key.WithHelp("ctrl+e", "export to csv")),
 	}
 }
 

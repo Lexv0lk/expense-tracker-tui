@@ -12,6 +12,10 @@ type editMsg struct {
 	id int
 }
 type summaryMsg struct{}
+type infoMsg struct {
+	message    string
+	sourceBack tea.Cmd
+}
 
 func backToTableCmd() tea.Cmd {
 	return func() tea.Msg {
@@ -40,5 +44,11 @@ func goToSummaryCmd() tea.Cmd {
 func errorCmd(err error, sourceBack tea.Cmd) tea.Cmd {
 	return func() tea.Msg {
 		return errorMsg{err, sourceBack}
+	}
+}
+
+func infoCmd(message string, sourceBack tea.Cmd) tea.Cmd {
+	return func() tea.Msg {
+		return infoMsg{message, sourceBack}
 	}
 }

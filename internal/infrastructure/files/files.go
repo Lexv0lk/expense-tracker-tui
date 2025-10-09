@@ -14,7 +14,7 @@ const (
 )
 
 func SaveToFile[T ~[]E, E any](data T) error {
-	saveFile, err := openOrCreateSaveFile()
+	saveFile, err := OpenOrCreateFile(getSaveDir(), saveFileName)
 
 	if err != nil {
 		return err
@@ -24,7 +24,7 @@ func SaveToFile[T ~[]E, E any](data T) error {
 }
 
 func GetFromFile[T ~[]E, E any]() (T, error) {
-	saveFile, err := openOrCreateSaveFile()
+	saveFile, err := OpenOrCreateFile(getSaveDir(), saveFileName)
 
 	if err != nil {
 		return nil, err
@@ -59,22 +59,12 @@ func getFromFile[T ~[]E, E any](file io.ReadCloser) (T, error) {
 	return data, err
 }
 
-func ensureSaveDirExists() error {
-	_, err := os.Stat(getSaveDir())
-
-	if os.IsNotExist(err) {
-		return os.MkdirAll(getSaveDir(), 0755)
-	}
-
-	return err
-}
-
-func openOrCreateSaveFile() (*os.File, error) {
-	if err := ensureSaveDirExists(); err != nil {
+func OpenOrCreateFile(dir string, filename string) (*os.File, error) {
+	if err := ensureDirExists(dir); err != nil {
 		return nil, err
 	}
 
-	f, err := os.OpenFile(getSavePath(), os.O_CREATE|os.O_RDWR, 0644)
+	f, err := os.OpenFile(filepath.Join(dir, filename), os.O_CREATE|os.O_RDWR, 0644)
 
 	if err != nil {
 		return nil, err
@@ -83,14 +73,14 @@ func openOrCreateSaveFile() (*os.File, error) {
 	return f, nil
 }
 
-func getSavePath() string {
-	path, err := os.UserConfigDir()
+func ensureDirExists(dir string) error {
+	_, err := os.Stat(dir)
 
-	if err != nil {
-		path = defaultSavePath
+	if os.IsNotExist(err) {
+		return os.MkdirAll(dir, 0755)
 	}
 
-	return filepath.Join(path, appName, saveFileName)
+	return err
 }
 
 func getSaveDir() string {

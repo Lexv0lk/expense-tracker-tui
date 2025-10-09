@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Lexv0lk/expense-tracker-tui/internal/application/expense"
 	"github.com/Lexv0lk/expense-tracker-tui/internal/domain"
+	"github.com/Lexv0lk/expense-tracker-tui/internal/infrastructure/csv"
 	"github.com/Lexv0lk/expense-tracker-tui/internal/infrastructure/menu/constants"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -146,6 +147,13 @@ func (m tableModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.table.Blur()
 				m.filterInput.SetValue("")
 				m.filterInput.Focus()
+			case key.Matches(msg, m.actionsKeyMap.Export):
+				err := csv.SaveToCSV(getStringRows(m.allExpenses))
+				if err != nil {
+					return m, errorCmd(fmt.Errorf("Error exporting expenses: %w", err), backToTableCmd())
+				}
+
+				return m, infoCmd(fmt.Sprintf("Expenses exported to %s", csv.GetSaveFilePath()), backToTableCmd())
 			}
 		}
 	case backMsg:
@@ -206,6 +214,18 @@ func (m *tableModel) UpdateShowData() {
 		return expense.Amount
 	})
 	m.table.SetRows(lo.Map(m.expensesToShow, getRow))
+}
+
+func getStringRows(expenses []domain.Expense) [][]string {
+	return lo.Map(expenses, func(expense domain.Expense, _ int) []string {
+		return []string{
+			strconv.Itoa(expense.Id),
+			expense.Category,
+			expense.Description,
+			fmt.Sprintf("%.2f", expense.Amount),
+			expense.SpentAt.Format("2006.01.02"),
+		}
+	})
 }
 
 func getRow(expense domain.Expense, _ int) table.Row {

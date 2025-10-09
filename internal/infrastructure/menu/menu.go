@@ -81,6 +81,16 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.msgView = cMsgModel
 		m.currentState = msgState
+	case infoMsg:
+		newMsgModel := getNewMsgModel(msg.message, msg.sourceBack)
+		cMsgModel, ok := newMsgModel.(msgModel)
+
+		if !ok {
+			panic("Failed assertion to msgModel")
+		}
+
+		m.msgView = cMsgModel
+		m.currentState = msgState
 	}
 
 	switch m.currentState {
