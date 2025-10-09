@@ -192,8 +192,6 @@ func newAdditionModel() (tea.Model, error) {
 			t.TextStyle = focusedStyle
 		case 1:
 			t.Placeholder = "Category"
-			t.PromptStyle = focusedStyle
-			t.TextStyle = focusedStyle
 		case 2:
 			t.Placeholder = "Amount"
 			t.SetValue("0")
